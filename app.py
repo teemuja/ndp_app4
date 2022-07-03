@@ -56,7 +56,7 @@ urban planning works in different geographical scales. The research method is co
 gross floor area (GFA) and urban amenities in different scales.
 Research reference is highly influential article 
 <a href="https://academic.oup.com/joeg/article-abstract/1/1/27/2964661" target="_blank">Consumer City</a>  
-by Edward Glaeser and Jef Kolko from year 2001.
+by Edward L. Glaeser, Jed Kolko and Albert Saiz from year 2001.
 </p>
 '''
 st.markdown(ingress, unsafe_allow_html=True)
