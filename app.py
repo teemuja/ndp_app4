@@ -52,11 +52,8 @@ ingress = '''
 <p style="font-family:sans-serif; color:Black; font-size: 14px;">
 This data paper visualise the change in correlation between urban density and urban amenities.
 Research quest here is to see how often used arguments of positive density impacts on local amenities in
-urban planning works in different geographical scales. The research method is correlation calculations between
+urban planning works in different geographical scales. The research method is Pearson correlation calculations between
 gross floor area (GFA) and urban amenities in different scales.
-Research reference is highly influential article 
-<a href="https://academic.oup.com/joeg/article-abstract/1/1/27/2964661" target="_blank">Consumer City</a>  
-by Edward L. Glaeser, Jed Kolko and Albert Saiz from year 2001.
 </p>
 '''
 st.markdown(ingress, unsafe_allow_html=True)
@@ -93,13 +90,44 @@ def load_data():
     return eng_data
 
 gdf = load_data()
-# filters
+
+centre_pnos = [
+"Helsinki keskusta - Etu-Töölö",
+"Punavuori - Bulevardi",
+"Kruununhaka",
+"Kaartinkaupunki",
+"Kaivopuisto - Ullanlinna",
+"Punavuori - Eira - Hernesaari",
+"Katajanokka",
+"Kamppi - Ruoholahti",
+"Jätkäsaari",
+"Länsi-Pasila",
+"Pohjois-Meilahti",
+"Meilahden sairaala-alue",
+"Taka-Töölö",
+"Keski-Töölö",
+"Munkkiniemi",
+"Kallio",
+"Vallila - Hermanni",
+"Sörnäinen - Harju",
+"Toukola - Kumpula - Vanhakaupunki",
+"Kalasatama - Kyläsaari",
+"Kalasatama - Sompasaari",
+"Alppila - Vallila"
+]
+
 s1,s2 = st.columns(2)
 pnolista = gdf['pno'].unique()
 tapa = s1.selectbox('Select...',['By City','By Neighbourhood'])
 if tapa == 'By City':
-    kuntani = s2.selectbox(' ',['Helsinki','Espoo','Vantaa'])
-    mygdf = gdf.loc[gdf.kunta == kuntani]
+    kuntani = s2.selectbox(' ',['Helsinki','Espoo','Vantaa','Helsinki centre','Helsinki suburbs'])
+    if kuntani == 'Helsinki centre':
+        mygdf = gdf.loc[gdf.pno.isin(centre_pnos)]
+    elif kuntani == 'Helsinki suburbs':
+        mygdf = gdf.loc[gdf.kunta == 'Helsinki']
+        mygdf = mygdf.loc[~mygdf.pno.isin(centre_pnos)]
+    else:
+        mygdf = gdf.loc[gdf.kunta == kuntani]
 else:
     pnos = s2.multiselect(' ', pnolista,
                             default=['Tapiola','Pohjois-Tapiola','Otaniemi'])
@@ -108,12 +136,14 @@ else:
     else:
         st.warning('Select city or neighbourhoods.')
         st.stop()
+
 # filters..
 col_list = mygdf.drop(columns=['kunta','pno']).columns.to_list()
 p1,p2 = st.columns(2)
 color = p1.selectbox('Select feature..', col_list)
-q_off = p2.slider('...and filter by setting low quantile cut (%)',10,90,20,10)
-mygdf = mygdf.loc[mygdf[f'{color}'].astype(int) > mygdf[f'{color}'].astype(int).quantile(q_off/100)]
+q_range = p2.slider('...and filter by setting quantiles in use (%)',0,100,(20,90),10)
+mygdf = mygdf.loc[mygdf[f'{color}'].astype(int) > mygdf[f'{color}'].astype(int).quantile(q_range[0]/100)] 
+mygdf = mygdf.loc[mygdf[f'{color}'].astype(int) < mygdf[f'{color}'].astype(int).quantile(q_range[1]/100)]
 mapplace = st.empty()
 l1,l2 = st.columns(2)
 level = l1.slider('H3-resolution in map (H6-H9)',6,9,9,1)
@@ -155,7 +185,7 @@ st.markdown('---')
 st.subheader('Correlation loss')
 
 @st.cache(allow_output_mutation=True)
-def corr_loss(df,h=10,corr_type='2000'):
+def corr_loss(df,h=10,corr_type='year'):
     if corr_type == '2000':
         x_list=['Total GFA in 2000',
                 'Residential GFA in 2000']
@@ -170,13 +200,21 @@ def corr_loss(df,h=10,corr_type='2000'):
                 'Urban amenities (OPC excluded) in 2016',
                 'Wholesale and retail trade in 2016',
                 'Crocery stores and kiosks in 2016']
-    else:
+    elif corr_type == 'year':
+        x_list=['Total GFA',
+                'Residential GFA']
+        y_list=['One person companies (OPC) in urban amenities',
+                'Urban amenities (OPC excluded)',
+                'Wholesale and retail trade',
+                'Crocery stores and kiosks']
+    elif corr_type == 'change':
         x_list=['GFA change 2000-2016',
                 'Residential GFA change 2000-2016']
         y_list=['Change in one person companies (OPC) in urban amenities 2000-2016',
                 'Cange in Urban amenities (OPC excluded) 2000-2016',
                 'Change in wholesale and retail trade 2000-2016',
                 'Change in Crocery stores and kiosks 2000-2016',]
+        
     frames = []
     for x in x_list:
         for y in y_list:
@@ -190,25 +228,57 @@ def corr_loss(df,h=10,corr_type='2000'):
     corr_df = pd.concat(frames, axis=1, ignore_index=False)
     return corr_df
 
-type = st.radio('Select year',('2000','2016'))
+# data in use for corr
 if tapa == 'By City':
-    st.caption(f'Data filtered using {color} -value quantiles {q_off}-100% in {kuntani}')
+    st.caption(f'Data filtered using {color} -value quantiles {q_range[0]}-{q_range[1]}% in {kuntani}')
     graph_title = kuntani
 else:
-    st.caption(f'Data filtered using {color} -value quantiles {q_off}-100% in neighbourhoods {pnos}')
+    st.caption(f'Data filtered using {color} -value quantiles {q_range[0]}-{q_range[1]}% in neighbourhoods {pnos}')
     graph_title = pnos
-    
-if type == '2000':
-    corr = corr_loss(mygdf,corr_type='2000')
-elif type == '2016':
-    corr = corr_loss(mygdf,corr_type='2016')
-else:
-    corr = corr_loss(mygdf,corr_type='muutos')
 
-fig_corr = px.line(corr,
+# corrs
+# use similar col names for facet plot
+facet_feat = {
+    'Total GFA in 2000':'Total GFA',
+    'Total GFA in 2016':'Total GFA',
+    'Residential GFA in 2000':'Residential GFA',
+    'Residential GFA in 2016':'Residential GFA',
+    'One person companies (OPC) in urban amenities in 2000':'One person companies (OPC) in urban amenities',
+    'One person companies (OPC) in urban amenities in 2016':'One person companies (OPC) in urban amenities',
+    'Urban amenities (OPC excluded) in 2000':'Urban amenities (OPC excluded)',
+    'Urban amenities (OPC excluded) in 2016':'Urban amenities (OPC excluded)',
+    'Wholesale and retail trade in 2000':'Wholesale and retail trade',
+    'Wholesale and retail trade in 2016':'Wholesale and retail trade',
+    'Crocery stores and kiosks in 2000':'Crocery stores and kiosks',
+    'Crocery stores and kiosks in 2016':'Crocery stores and kiosks',
+}
+facet_col_list_2000 = [
+    'Total GFA in 2000',
+    'Residential GFA in 2000',
+    'One person companies (OPC) in urban amenities in 2000',
+    'Urban amenities (OPC excluded) in 2000',
+    'Wholesale and retail trade in 2000',
+    'Crocery stores and kiosks in 2000'
+]
+facet_col_list_2016 = [
+    'Total GFA in 2016',
+    'Residential GFA in 2016',
+    'One person companies (OPC) in urban amenities in 2016',
+    'Urban amenities (OPC excluded) in 2016',
+    'Wholesale and retail trade in 2016',
+    'Crocery stores and kiosks in 2016'
+]
+corr_2000 = corr_loss(mygdf[facet_col_list_2000].rename(columns=facet_feat),corr_type='year')
+corr_2000['year'] = 2000
+corr_2016 = corr_loss(mygdf[facet_col_list_2016].rename(columns=facet_feat),corr_type='year')
+corr_2016['year'] = 2016
+corrs = corr_2000.append(corr_2016)
+
+fig_corr = px.line(corrs,
                    labels = {'index':'Geographical scale (H3-resolution)','value':'Correlation','variable':'Correlation pairs'},
-                   title=f'Correlation loss in {graph_title} in {type}')
+                   title=f'Correlation loss in {graph_title}', facet_col='year' )
 fig_corr.update_xaxes(autorange="reversed")
+fig_corr.update_layout(legend=dict(orientation="h"))
 st.plotly_chart(fig_corr, use_container_width=True)
 
 with st.expander('Correlation matrix', expanded=False):
