@@ -14,7 +14,7 @@ import json
 
 
 # page setup ---------------------------------------------------------------
-st.set_page_config(page_title="NDP App d1", layout="wide")
+st.set_page_config(page_title="NDP App #4", layout="wide")
 padding = 1
 st.markdown(f""" <style>
     .reportview-container .main .block-container{{
@@ -51,7 +51,7 @@ st.subheader("Correlation between urban density and amenities")
 ingress = '''
 <p style="font-family:sans-serif; color:Black; font-size: 14px;">
 This data paper visualise the change in correlation between urban density and urban amenities.
-Research quest here is to see how often used arguments of positive density impacts on local amenities in
+Research quest here is to see how often used argument of positive density impact on local amenities in
 urban planning works in different geographical scales. The research method is Pearson correlation calculations between
 gross floor area (GFA) and urban amenities in different scales.
 </p>
@@ -139,9 +139,10 @@ else:
 
 # filters..
 col_list = mygdf.drop(columns=['kunta','pno']).columns.to_list()
+default_ix = col_list.index('Residential GFA in 2016')
 p1,p2 = st.columns(2)
-color = p1.selectbox('Select feature..', col_list)
-q_range = p2.slider('...and filter by setting quantiles in use (%)',0,100,(20,90),10)
+color = p1.selectbox('Filter by feature quantiles (%)', col_list, index=default_ix)
+q_range = p2.slider(' ',0,100,(10,90),10)
 mygdf = mygdf.loc[mygdf[f'{color}'].astype(int) > mygdf[f'{color}'].astype(int).quantile(q_range[0]/100)] 
 mygdf = mygdf.loc[mygdf[f'{color}'].astype(int) < mygdf[f'{color}'].astype(int).quantile(q_range[1]/100)]
 mapplace = st.empty()
@@ -172,7 +173,7 @@ if len(mygdf) > 1:
                             height=700
                             )
     fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, height=700)
-    fig.update_layout(coloraxis_showscale=True)
+    fig.update_layout(coloraxis_showscale=False)
     with mapplace:
         st.plotly_chart(fig, use_container_width=True)
     
@@ -230,12 +231,12 @@ def corr_loss(df,h=10,corr_type='year'):
 
 # data in use for corr
 if tapa == 'By City':
-    st.caption(f'Data filtered using {color} -value quantiles {q_range[0]}-{q_range[1]}% in {kuntani}')
+    st.caption(f'Data in use: {color} -value quantiles {q_range[0]}-{q_range[1]}% in {kuntani}')
     graph_title = kuntani
 else:
-    st.caption(f'Data filtered using {color} -value quantiles {q_range[0]}-{q_range[1]}% in neighbourhoods {pnos}')
+    st.caption(f'Data in use: {color} -value quantiles {q_range[0]}-{q_range[1]}% in neighbourhoods {pnos}')
     graph_title = pnos
-
+st.caption('Click the legend to select/unselect correlation pairs. Save the graph using camera-icon when howered over.')
 # corrs
 # use similar col names for facet plot
 facet_feat = {
@@ -275,10 +276,10 @@ corr_2016['year'] = 2016
 corrs = corr_2000.append(corr_2016)
 
 fig_corr = px.line(corrs,
-                   labels = {'index':'Geographical scale (H3-resolution)','value':'Correlation','variable':'Correlation pairs'},
+                   labels = {'index':'H3-resolution','value':'Correlation','variable':'Corr pairs'},
                    title=f'Correlation loss in {graph_title}', facet_col='year' )
 fig_corr.update_xaxes(autorange="reversed")
-fig_corr.update_layout(legend=dict(orientation="h"))
+fig_corr.update_layout(legend=dict(orientation="h",yanchor="bottom",y=-0.3,xanchor="right",x=1))
 st.plotly_chart(fig_corr, use_container_width=True)
 
 with st.expander('Correlation matrix', expanded=False):
