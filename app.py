@@ -22,7 +22,8 @@ st.markdown(f""" <style>
         padding-right: {padding}rem;
         padding-left: {padding}rem;
         padding-bottom: {padding}rem;
-    }} </style> """, unsafe_allow_html=True)
+    }}
+    </style> """, unsafe_allow_html=True)
 
 header = '<p style="font-family:sans-serif; color:grey; font-size: 12px;">\
         NDP data paper #4 V0.9\
@@ -278,8 +279,8 @@ corrs = corr_2000.append(corr_2016)
 fig_corr = px.line(corrs,
                    labels = {'index':'H3-resolution','value':'Correlation','variable':'Corr pairs'},
                    title=f'Correlation loss in {graph_title}', facet_col='year' )
-fig_corr.update_xaxes(autorange="reversed")
-fig_corr.update_layout(legend=dict(orientation="h",yanchor="bottom",y=-0.3,xanchor="right",x=1))
+fig_corr.update_xaxes(autorange="reversed")#, side='top')
+fig_corr.update_layout(legend=dict(orientation="h",yanchor="bottom",y=-0.5,xanchor="right",x=1))
 st.plotly_chart(fig_corr, use_container_width=True)
 
 with st.expander('Correlation matrix', expanded=False):
